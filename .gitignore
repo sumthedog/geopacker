@@ -1,0 +1,17 @@
+# Compiled Python
+__pycache__/
+*.pyc
+
+# QGIS Compiled Resources
+resources.py
+
+# Build outputs
+*.zip
+help/
+i18n/*.qm
+
+# IDE / OS Files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

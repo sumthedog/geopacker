@@ -1,0 +1,16 @@
+[general]
+name=Geopacker
+qgisMinimumVersion=3.0
+description=Bundles an entire QGIS project (.qgz) into an easily shareable, single compressed file. Consolidates vectors into a GeoPackage, gathers rasters, and fixes layer paths.
+version=1.0.0
+author=Frederick Cuario
+email=rrcuario@gmail.com
+about=A tool to package layers for sharing by eliminating broken paths.
+tracker=https://github.com/qwe/geopacker/issues
+repository=https://github.com/qwe/geopacker
+category=Vector
+icon=icon.png
+tags=geopackage,share,package,zip,export
+has_processing_provider=False
+license=GNU General Public License v2 or later
+changelog=1.0.0 - Initial Release of Geopacker
