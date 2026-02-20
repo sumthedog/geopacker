@@ -22,6 +22,7 @@ class GeopackerDialog(QDialog, FORM_CLASS):
         output_file = self.fileOutput.filePath()
         strip_dupes = self.chkStripDuplicates.isChecked()
         strip_empty = self.chkStripEmpty.isChecked()
+        skip_remote = self.chkSkipRemoteVectors.isChecked()
         
         if not output_file:
             from qgis.PyQt.QtWidgets import QMessageBox
@@ -32,13 +33,18 @@ class GeopackerDialog(QDialog, FORM_CLASS):
             output_file=output_file, 
             strip_duplicates=strip_dupes, 
             strip_empty=strip_empty,
+            skip_remote=skip_remote,
             progress_bar=self.progressBar,
             status_label=self.lblStatus
         )
         try:
-            logic.run()
+            failed_layers = logic.run()
             from qgis.PyQt.QtWidgets import QMessageBox
-            QMessageBox.information(self, "Success", f"Project packaged successfully to {output_file}")
+            if failed_layers:
+                msg = "Packaging completed, but the following layers failed or were skipped:\n" + "\n".join(failed_layers)
+                QMessageBox.warning(self, "Partial Success", f"Project packaged to {output_file}\n\n{msg}")
+            else:
+                QMessageBox.information(self, "Success", f"Project packaged successfully to {output_file}")
             self.accept()
         except Exception as e:
             from qgis.PyQt.QtWidgets import QMessageBox

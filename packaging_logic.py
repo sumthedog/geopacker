@@ -15,10 +15,11 @@ from qgis.core import (
 from qgis.PyQt.QtCore import QCoreApplication
 
 class GeopackerLogic:
-    def __init__(self, output_file, strip_duplicates=True, strip_empty=True, progress_bar=None, status_label=None):
+    def __init__(self, output_file, strip_duplicates=True, strip_empty=True, skip_remote=True, progress_bar=None, status_label=None):
         self.output_file = output_file
         self.strip_duplicates = strip_duplicates
         self.strip_empty = strip_empty
+        self.skip_remote = skip_remote
         self.progress_bar = progress_bar
         self.status_label = status_label
         self.project = QgsProject.instance()
@@ -79,12 +80,19 @@ class GeopackerLogic:
 
             layer_mapping = {}  
             used_layer_names = set()
+            failed_layers = []
             
             for i, layer in enumerate(layers_to_package):
                 progress = 5 + int(60 * (i / len(layers_to_package)))
                 self.update_status(f"Processing layer: {layer.name()}", progress)
                 
                 if layer.type() == QgsVectorLayer.VectorLayer:
+                    provider_name = layer.dataProvider().name() if layer.dataProvider() else ""
+                    if self.skip_remote and provider_name not in ('ogr', 'memory', 'delimitedtext', 'gpx', 'spatialite'):
+                        self.update_status(f"Skipping remote vector layer: {layer.name()} ({provider_name})")
+                        failed_layers.append(f"• {layer.name()} (Skipped: remote/online provider '{provider_name}')")
+                        continue
+
                     options = QgsVectorFileWriter.SaveVectorOptions()
                     options.driverName = "GPKG"
                     
@@ -118,6 +126,7 @@ class GeopackerLogic:
                         }
                     else:
                         QgsMessageLog.logMessage(f"Failed to export {layer.name()}: {error_msg}", "Geopacker", Qgis.Warning)
+                        failed_layers.append(f"• {layer.name()} (Failed export: {error_msg})")
                 
                 elif layer.type() == QgsRasterLayer.RasterLayer:
                     source_path = layer.dataProvider().dataSourceUri()
@@ -173,6 +182,10 @@ class GeopackerLogic:
                                 ds_elem = maplayer.find('datasource')
                                 if ds_elem is not None:
                                     ds_elem.text = layer_mapping[lid]['source']
+                                
+                                provider_elem = maplayer.find('provider')
+                                if provider_elem is not None:
+                                    provider_elem.text = layer_mapping[lid]['provider']
                 
                 def remove_from_layer_tree(group):
                     for child in list(group):
@@ -217,6 +230,7 @@ class GeopackerLogic:
                         final_zip.write(file_path, rel_path)
 
             self.update_status("Packaging complete!", 100)
+            return failed_layers
             
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)

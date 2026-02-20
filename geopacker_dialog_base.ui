@@ -52,6 +52,16 @@
     </widget>
    </item>
    <item>
+    <widget class="QCheckBox" name="chkSkipRemoteVectors">
+     <property name="text">
+      <string>Skip Remote Vectors (WFS, Online)</string>
+     </property>
+     <property name="checked">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
     <spacer name="verticalSpacer">
      <property name="orientation">
       <enum>Qt::Vertical</enum>

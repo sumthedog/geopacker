@@ -18,6 +18,7 @@ Sharing QGIS projects often results in broken file paths because standard tools 
 | **Raster Data Support** | ❌ Ignores raster files entirely. | ✅ Automatically copies and links local **rasters** safely. |
 | **Duplicate Checking** | ❌ Blindly processes duplicates, inflating file size. | ✅ Actively detects and **strips duplicate** layer sources. |
 | **Empty Layers** | ❌ Packages empty workspace/scratch layers. | ✅ Automatically **trims out empty** memory layers. |
+| **Remote Layers** | ❌ Attempts to download massive WFS datasets. | ✅ Safely **skips remote vectors**, keeping them linked online. |
 | **Final Output** | ❌ Yields a loose, unmanaged GeoPackage file. | ✅ Generates a **single, email-ready `.zip`** archive. |
 
 ## Features
@@ -25,6 +26,8 @@ Sharing QGIS projects often results in broken file paths because standard tools 
 - **Collects Rasters**: Copies local rasters (like GeoTIFFs) into a unified `rasters/` directory.
 - **Path Remapping**: Behind the scenes, the plugin unzips a copy of your `.qgz` project, parses the underlying XML, and safely updates the layer data sources to point to the new relatively-pathed GeoPackage and rasters.
 - **Smart Trimming**: Optional checkboxes to strip out empty memory layers and duplicate layer sources to keep your packaged file size down.
+- **Remote Layer Protection**: Automatically detects remote vectors (e.g. WFS/Online) and securely skips downloading them while retaining their dynamic online links in the final project.
+- **Error Reporting**: Informs you of exactly which layers were skipped or failed to export.
 
 ## Installation
 1. Download a Geopacker ZIP release from this repository.
@@ -36,9 +39,10 @@ Sharing QGIS projects often results in broken file paths because standard tools 
 1. Open your target mapping project in QGIS.
 2. Click the Geopacker icon or find it under the **Plugins** > **Geopacker** menu.
 3. Choose the destination path for your packaged `.zip` file.
-4. Check the options to remove duplicates or empty temporary layers if desired.
+4. Check the options to remove duplicates, empty temporary layers, or skip remote vectors if desired.
 5. Click **Run**.
-6. Share the resulting `.zip` file with your colleagues or clients!
+6. Wait for the success dialog (which will also list any skipped or failed layers).
+7. Share the resulting `.zip` file with your colleagues or clients!
 
 ## Requirements
 - QGIS 3.0 or higher.
