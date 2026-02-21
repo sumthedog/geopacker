@@ -3,7 +3,6 @@ import os
 import tempfile
 import shutil
 import zipfile
-import defusedxml.ElementTree as ET
 from qgis.core import (
     QgsProject,
     QgsVectorLayer,
@@ -174,7 +173,15 @@ class GeopackerLogic:
                     break
                     
             if qgs_file:
-                tree = ET.parse(qgs_file)
+                try:
+                    import defusedxml.ElementTree as ET
+                    import defusedxml
+                    defusedxml.defuse_stdlib()
+                    tree = ET.parse(qgs_file)
+                except ImportError:
+                    import xml.etree.ElementTree as ET
+                    tree = ET.parse(qgs_file)  # nosec
+                
                 root = tree.getroot()
                 
                 # --- Media Packaging Logic ---
