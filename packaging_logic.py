@@ -136,15 +136,31 @@ class GeopackerLogic:
                         source_dir = os.path.dirname(source_path)
                         base_name, _ = os.path.splitext(filename)
                         
+                        group_path = ""
+                        node = self.project.layerTreeRoot().findLayer(layer.id())
+                        if node:
+                            parent = node.parent()
+                            groups = []
+                            while parent and parent != self.project.layerTreeRoot():
+                                gname = "".join([c if c.isalnum() or c in (' ', '-', '_') else "_" for c in parent.name()]).strip()
+                                if gname:
+                                    groups.insert(0, gname)
+                                parent = parent.parent()
+                            if groups:
+                                group_path = "/".join(groups)
+
+                        raster_dest_dir = os.path.join(rasters_dir, os.path.normpath(group_path)) if group_path else rasters_dir
+                        os.makedirs(raster_dest_dir, exist_ok=True)
+                        
                         if os.path.isdir(source_dir):
                             for f in os.listdir(source_dir):
                                 if f == filename or f.startswith(base_name + '.') or f.startswith(filename + '.'):
                                     src_f = os.path.join(source_dir, f)
                                     if os.path.isfile(src_f):
-                                        dst_f = os.path.join(rasters_dir, f)
+                                        dst_f = os.path.join(raster_dest_dir, f)
                                         shutil.copy2(src_f, dst_f)
                                         
-                        new_source = f"./rasters/{filename}"
+                        new_source = f"./rasters/{group_path}/{filename}" if group_path else f"./rasters/{filename}"
                         layer_mapping[layer.id()] = {
                             'type': 'raster',
                             'source': new_source,
