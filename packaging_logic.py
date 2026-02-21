@@ -3,7 +3,7 @@ import os
 import tempfile
 import shutil
 import zipfile
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET
 from qgis.core import (
     QgsProject,
     QgsVectorLayer,
