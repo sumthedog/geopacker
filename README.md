@@ -16,17 +16,22 @@ Sharing QGIS projects often results in broken file paths because standard tools 
 | --- | --- | --- |
 | **Project Path Linking** | ❌ Leaves `.qgz` untouched (links break upon sharing). | ✅ Safely rewrites `.qgz` XML to use perfect **relative paths**. |
 | **Raster Data Support** | ❌ Ignores raster files entirely. | ✅ Automatically copies and links local **rasters** safely. |
+| **Raster Sidecar Files** | ❌ N/A. | ✅ Smartly packages `.tfw`, `.prj`, `.aux.xml` with rasters so georeferencing/styling isn't lost. |
+| **Media Assets (SVGs, Logos)** | ❌ Leaves absolute local paths that break print layouts. | ✅ Detects local Print Layout images and SVG markers, packing them into a relative `media/` folder. |
 | **Duplicate Checking** | ❌ Blindly processes duplicates, inflating file size. | ✅ Actively detects and **strips duplicate** layer sources. |
 | **Empty Layers** | ❌ Packages empty workspace/scratch layers. | ✅ Automatically **trims out empty** memory layers. |
 | **Remote Layers** | ❌ Attempts to download massive WFS datasets. | ✅ Safely **skips remote vectors**, keeping them linked online. |
-| **Final Output** | ❌ Yields a loose, unmanaged GeoPackage file. | ✅ Generates a **single, email-ready `.zip`** archive. |
+| **Final Output** | ❌ Yields a loose, unmanaged GeoPackage file. | ✅ Generates a **single, safe, email-ready `.zip`** archive. |
 
 ## Features
 - **Consolidates Vectors**: Exports all valid shapefiles, GeoJSONs, etc. into a single `packaged_data.gpkg`.
-- **Collects Rasters**: Copies local rasters (like GeoTIFFs) into a unified `rasters/` directory.
-- **Path Remapping**: Behind the scenes, the plugin unzips a copy of your `.qgz` project, parses the underlying XML, and safely updates the layer data sources to point to the new relatively-pathed GeoPackage and rasters.
+- **Collects Rasters & Sidecars**: Automatically bundles local rasters alongside any matching sidecar files (like `.tfw` or `.prj`) into a unified `rasters/` directory.
+- **Packages Layouts & SVGs**: Scans QGIS Projects for local custom SVGs and Print Layout images, copying them to a `media/` folder and rewriting their paths to be relative.
+- **Smart Path Remapping**: Behind the scenes, the plugin unzips a copy of your `.qgz` project, parses the underlying XML, and updates all layer and media data sources to point to the new relatively-pathed GeoPackage, rasters, and media.
+- **Dynamic ZIP Naming**: The QGIS project file securely nested inside the ZIP archive takes on the same matching name as your exported zip file (e.g., `MyProject.zip` will contain `MyProject.qgz`).
 - **Smart Trimming**: Optional checkboxes to strip out empty memory layers and duplicate layer sources to keep your packaged file size down.
 - **Remote Layer Protection**: Automatically detects remote vectors (e.g. WFS/Online) and securely skips downloading them while retaining their dynamic online links in the final project.
+- **Graceful Error Handling**: Actively protects you by deleting partial ZIP exports if an unrecoverable system error occurs mid-process, ensuring no corrupt maps are sent.
 - **Error Reporting**: Informs you of exactly which layers were skipped or failed to export.
 
 ## Installation

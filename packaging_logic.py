@@ -48,6 +48,8 @@ class GeopackerLogic:
         temp_dir = tempfile.mkdtemp(prefix="geopacker_")
         rasters_dir = os.path.join(temp_dir, "rasters")
         os.makedirs(rasters_dir, exist_ok=True)
+        media_dir = os.path.join(temp_dir, "media")
+        os.makedirs(media_dir, exist_ok=True)
         gpkg_path = os.path.join(temp_dir, "packaged_data.gpkg")
         
         try:
@@ -132,8 +134,17 @@ class GeopackerLogic:
                     source_path = layer.dataProvider().dataSourceUri()
                     if os.path.isfile(source_path):
                         filename = os.path.basename(source_path)
-                        dest_path = os.path.join(rasters_dir, filename)
-                        shutil.copy2(source_path, dest_path)
+                        source_dir = os.path.dirname(source_path)
+                        base_name, _ = os.path.splitext(filename)
+                        
+                        if os.path.isdir(source_dir):
+                            for f in os.listdir(source_dir):
+                                if f == filename or f.startswith(base_name + '.') or f.startswith(filename + '.'):
+                                    src_f = os.path.join(source_dir, f)
+                                    if os.path.isfile(src_f):
+                                        dst_f = os.path.join(rasters_dir, f)
+                                        shutil.copy2(src_f, dst_f)
+                                        
                         new_source = f"./rasters/{filename}"
                         layer_mapping[layer.id()] = {
                             'type': 'raster',
@@ -165,6 +176,57 @@ class GeopackerLogic:
             if qgs_file:
                 tree = ET.parse(qgs_file)
                 root = tree.getroot()
+                
+                # --- Media Packaging Logic ---
+                media_mapping = {}
+                def process_media_path(path_str):
+                    if not path_str or not isinstance(path_str, str):
+                        return path_str
+                    if os.path.isabs(path_str) and os.path.isfile(path_str):
+                        if path_str not in media_mapping:
+                            filename = os.path.basename(path_str)
+                            safe_name = filename
+                            suffix = 1
+                            dest_path = os.path.join(media_dir, safe_name)
+                            while os.path.exists(dest_path):
+                                base, ext = os.path.splitext(filename)
+                                safe_name = f"{base}_{suffix}{ext}"
+                                dest_path = os.path.join(media_dir, safe_name)
+                                suffix += 1
+                            try:
+                                shutil.copy2(path_str, dest_path)
+                                media_mapping[path_str] = f"./media/{safe_name}"
+                            except Exception as e:
+                                QgsMessageLog.logMessage(f"Failed to copy media {path_str}: {str(e)}", "Geopacker", Qgis.Warning)
+                                return path_str
+                        return media_mapping[path_str]
+                    return path_str
+
+                def remap_assets_in_element(element):
+                    changed = False
+                    if element.tag == 'prop' and element.get('k') in ('name', 'svgFile', 'file'):
+                        v = element.get('v')
+                        if v:
+                            new_path = process_media_path(v)
+                            if new_path != v:
+                                element.set('v', new_path)
+                                changed = True
+                    if element.tag == 'Option' and element.get('type') == 'QString':
+                        name = element.get('name')
+                        if name in ('pictureUrl', 'file', 'svgFile', 'path', 'sourceFile'):
+                            v = element.get('value')
+                            if v:
+                                new_path = process_media_path(v)
+                                if new_path != v:
+                                    element.set('value', new_path)
+                                    changed = True
+                    for child in list(element):
+                        if remap_assets_in_element(child):
+                            changed = True
+                    return changed
+                
+                remap_assets_in_element(root)
+                # -----------------------------
                 
                 project_layers = root.find('projectlayers')
                 layer_tree = root.find('layer-tree-group')
@@ -217,8 +279,13 @@ class GeopackerLogic:
                 shutil.rmtree(qgz_extract_dir, ignore_errors=True)
 
             self.update_status("Zipping final package...", 85)
+            
+            output_basename = os.path.basename(self.output_file)
+            project_name, _ = os.path.splitext(output_basename)
+            qgz_name_in_zip = f"{project_name}.qgz"
+            
             with zipfile.ZipFile(self.output_file, 'w', zipfile.ZIP_DEFLATED) as final_zip:
-                final_zip.write(temp_qgz_path, "project.qgz")
+                final_zip.write(temp_qgz_path, qgz_name_in_zip)
                 
                 if os.path.exists(gpkg_path):
                     final_zip.write(gpkg_path, "packaged_data.gpkg")
@@ -228,6 +295,13 @@ class GeopackerLogic:
                         file_path = os.path.join(root_dir, file)
                         rel_path = os.path.relpath(file_path, temp_dir)
                         final_zip.write(file_path, rel_path)
+
+                if os.path.exists(media_dir):
+                    for root_dir, dirs, files in os.walk(media_dir):
+                        for file in files:
+                            file_path = os.path.join(root_dir, file)
+                            rel_path = os.path.relpath(file_path, temp_dir)
+                            final_zip.write(file_path, rel_path)
 
             self.update_status("Packaging complete!", 100)
             return failed_layers

@@ -47,5 +47,10 @@ class GeopackerDialog(QDialog, FORM_CLASS):
                 QMessageBox.information(self, "Success", f"Project packaged successfully to {output_file}")
             self.accept()
         except Exception as e:
+            if os.path.exists(output_file):
+                try:
+                    os.remove(output_file)
+                except Exception:
+                    pass
             from qgis.PyQt.QtWidgets import QMessageBox
             QMessageBox.critical(self, "Error", f"Failed to package project:\n{str(e)}")
