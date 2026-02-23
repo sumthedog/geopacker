@@ -208,6 +208,8 @@ class GeopackerLogic:
                             except Exception:
                                 # Fallback to existing logic
                                 for f in os.listdir(source_dir):
+                                    if ".qgis_time_machine" in f or ".qgis_time_machine" in source_dir:
+                                        continue
                                     if f == filename or f.startswith(base_name + '.') or f.startswith(filename + '.'):
                                         src_f = os.path.join(source_dir, f)
                                         if os.path.isfile(src_f):
