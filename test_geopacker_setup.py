@@ -4,8 +4,8 @@
 import os
 import tempfile
 from qgis.core import (
-    QgsProject, QgsVectorLayer, QgsRasterLayer, QgsFeature, QgsGeometry, 
-    QgsPointXY, QgsField, Qgis
+    QgsProject, QgsVectorLayer, QgsRasterLayer, QgsFeature, QgsGeometry,
+    QgsPointXY, QgsField
 )
 from PyQt5.QtCore import QVariant
 

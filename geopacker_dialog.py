@@ -2,7 +2,7 @@
 import os
 from qgis.PyQt import uic
 from qgis.PyQt.QtWidgets import QDialog
-from qgis.core import QgsProject
+
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'geopacker_dialog_base.ui'))
@@ -50,7 +50,11 @@ class GeopackerDialog(QDialog, FORM_CLASS):
             if os.path.exists(output_file):
                 try:
                     os.remove(output_file)
-                except Exception:
-                    pass
+                except Exception as cleanup_err:
+                    from qgis.core import QgsMessageLog, Qgis
+                    QgsMessageLog.logMessage(
+                        f"Failed to clean up partial output file: {cleanup_err}",
+                        "Geopacker", Qgis.Warning
+                    )
             from qgis.PyQt.QtWidgets import QMessageBox
             QMessageBox.critical(self, "Error", f"Failed to package project:\n{str(e)}")

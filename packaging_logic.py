@@ -46,19 +46,20 @@ class GeopackerLogic:
         
         output_dir = os.path.dirname(os.path.abspath(self.output_file)) if self.output_file else None
         try:
-            temp_dir = tempfile.mkdtemp(prefix="geopacker_", dir=output_dir if (output_dir and os.path.exists(output_dir)) else None)
+            temp_dir_ctx = tempfile.TemporaryDirectory(prefix="geopacker_", dir=output_dir if (output_dir and os.path.exists(output_dir)) else None)
         except OSError:
-            temp_dir = tempfile.mkdtemp(prefix="geopacker_")
-            
-        rasters_dir = os.path.join(temp_dir, "rasters")
-        os.makedirs(rasters_dir, exist_ok=True)
-        media_dir = os.path.join(temp_dir, "media")
-        os.makedirs(media_dir, exist_ok=True)
-        styles_dir = os.path.join(temp_dir, "styles")
-        os.makedirs(styles_dir, exist_ok=True)
-        gpkg_path = os.path.join(temp_dir, "packaged_data.gpkg")
+            temp_dir_ctx = tempfile.TemporaryDirectory(prefix="geopacker_")
         
-        try:
+        with temp_dir_ctx as temp_dir:
+            
+            rasters_dir = os.path.join(temp_dir, "rasters")
+            os.makedirs(rasters_dir, exist_ok=True)
+            media_dir = os.path.join(temp_dir, "media")
+            os.makedirs(media_dir, exist_ok=True)
+            styles_dir = os.path.join(temp_dir, "styles")
+            os.makedirs(styles_dir, exist_ok=True)
+            gpkg_path = os.path.join(temp_dir, "packaged_data.gpkg")
+            
             layers = self.project.mapLayers().values()
             total_layers = len(layers)
             if total_layers == 0:
@@ -69,7 +70,7 @@ class GeopackerLogic:
             layers_to_package = []
             layers_to_remove = []
             report_lines = ["Geopacker Packaging Report", "========================="]
-            
+
             self.update_status("Filtering layers...", 5)
             for layer in layers:
                 if self.strip_empty and self.is_layer_empty_temp(layer):
@@ -77,7 +78,7 @@ class GeopackerLogic:
                     layers_to_remove.append(layer.id())
                     report_lines.append(f"[SKIPPED] {layer.name()} - Empty temporary layer")
                     continue
-                
+
                 source = layer.publicSource()
                 if self.strip_duplicates:
                     if source in seen_sources:
@@ -86,13 +87,13 @@ class GeopackerLogic:
                         report_lines.append(f"[SKIPPED] {layer.name()} - Duplicate source")
                         continue
                     seen_sources.add(source)
-                
+
                 layers_to_package.append(layer)
 
-            layer_mapping = {}  
+            layer_mapping = {}
             used_layer_names = set()
             failed_layers = []
-            
+
             for i, layer in enumerate(layers_to_package):
                 progress = 5 + int(60 * (i / len(layers_to_package)))
                 self.update_status(f"Processing layer: {layer.name()}", progress)
@@ -158,7 +159,7 @@ class GeopackerLogic:
                                 try:
                                     shutil.copy2(qml_path, dst_qml)
                                     report_lines.append(f"[SUCCESS] {layer.name()} -> Copied Style (.qml)")
-                                except Exception as e:
+                                except OSError as e:
                                     report_lines.append(f"[FAILED] {layer.name()} - Could not copy .qml: {e}")
                     else:
                         QgsMessageLog.logMessage(f"Failed to export {layer.name()}: {error_msg}", "Geopacker", Qgis.Warning)
@@ -205,8 +206,8 @@ class GeopackerLogic:
                                                     pass
                                 else:
                                     raise Exception("gdal.Open failed")
-                            except Exception:
-                                # Fallback to existing logic
+                            except (ImportError, OSError, RuntimeError):
+                                # Fallback to existing logic if GDAL unavailable or fails
                                 for f in os.listdir(source_dir):
                                     if ".qgis_time_machine" in f or ".qgis_time_machine" in source_dir:
                                         continue
@@ -216,7 +217,7 @@ class GeopackerLogic:
                                             dst_f = os.path.join(raster_dest_dir, f)
                                             try:
                                                 shutil.copy2(src_f, dst_f)
-                                            except shutil.SameFileError:
+                                            except (OSError, shutil.SameFileError):
                                                 pass
                                         
                         new_source = f"./rasters/{group_path}/{filename}" if group_path else f"./rasters/{filename}"
@@ -241,7 +242,11 @@ class GeopackerLogic:
             os.makedirs(qgz_extract_dir, exist_ok=True)
             
             with zipfile.ZipFile(temp_qgz_path, 'r') as zf:
-                zf.extractall(qgz_extract_dir)
+                for member in zf.namelist():
+                    member_path = os.path.normpath(os.path.join(qgz_extract_dir, member))
+                    if not member_path.startswith(os.path.normpath(qgz_extract_dir) + os.sep) and member_path != os.path.normpath(qgz_extract_dir):
+                        raise ValueError(f"Unsafe path in archive: {member}")
+                    zf.extract(member, qgz_extract_dir)
                 
             qgs_file = None
             for file in os.listdir(qgz_extract_dir):
@@ -256,8 +261,13 @@ class GeopackerLogic:
                     defusedxml.defuse_stdlib()
                     tree = ET.parse(qgs_file)
                 except ImportError:
+                    QgsMessageLog.logMessage(
+                        "defusedxml not found — falling back to standard XML parser. "
+                        "Install defusedxml for safer XML handling.",
+                        "Geopacker", Qgis.Warning
+                    )
                     import xml.etree.ElementTree as ET
-                    tree = ET.parse(qgs_file)  # nosec
+                    tree = ET.parse(qgs_file)
                 
                 root = tree.getroot()
                 
@@ -302,7 +312,7 @@ class GeopackerLogic:
                         try:
                             shutil.copy2(path_str, dest_path)
                             return f"./styles/{safe_name}"
-                        except Exception:
+                        except OSError:
                             return path_str
                     return path_str
 
@@ -461,5 +471,4 @@ class GeopackerLogic:
             self.update_status("Packaging complete!", 100)
             return failed_layers
             
-        finally:
-            shutil.rmtree(temp_dir, ignore_errors=True)
+
