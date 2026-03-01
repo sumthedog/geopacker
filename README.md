@@ -4,6 +4,8 @@
 
 # Geopacker QGIS Plugin
 
+![Version](https://img.shields.io/badge/version-1.1.2-blue)
+
 **Geopacker** is a QGIS plugin designed to solve the headache of broken paths when sharing QGIS projects. It bundles your entire current project (`.qgz`), vector layers, and raster layers into a single, clean `.zip` file ready to be shared. 
 
 Unlike the native "Package Layers" tool, Geopacker actually modifies the bundled `.qgz` project to use relative paths, ensuring that whoever opens your packaged zip file will see exactly what you see, without a single broken link warning.
@@ -54,6 +56,38 @@ Sharing QGIS projects often results in broken file paths because standard tools 
 ## Requirements
 - QGIS 3.0 or higher.
 - Python 3 environment (native to QGIS installations).
+- **Recommended:** [`defusedxml`](https://pypi.org/project/defusedxml/) for hardened XML parsing. Install via `pip install defusedxml` in the QGIS Python console.
+
+## Changelog
+
+### 1.1.2
+- Added ZIP Slip (path traversal) protection during archive extraction
+- Hardened XML parsing with `defusedxml` warning fallback
+- Narrowed broad exception handlers to specific types (`OSError`, `SameFileError`, etc.)
+- Logged previously silenced cleanup errors
+- Replaced manual temp directory handling with `TemporaryDirectory` context manager
+- Removed unused imports
+
+### 1.1.1
+- Added `.qml` style file packaging
+- Fixed map layout background/image path mapping
+- Robust destination drive temp staging
+- Added dynamic ZIP packaging reports
+
+### 1.1.0
+- Experimental release
+
+### 1.0.2
+- Support for raster sidecar files
+- Localized SVG/Print Layout media packaging
+- Inner QGZ matched naming
+- Graceful error handling
+
+### 1.0.1
+- Fix and remove `.qrc`
+
+### 1.0.0
+- Initial release of Geopacker
 
 ## Contributing and Bug Reports
 Please report any bugs or feature requests on the [GitHub Issues tracker](https://github.com/rick2x/geopacker/issues).
