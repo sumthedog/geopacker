@@ -2,7 +2,7 @@
 name=Geopacker
 qgisMinimumVersion=3.0
 description=Bundles an entire QGIS project (.qgz) into an easily shareable, single compressed file. Consolidates vectors, rasters, layout images, and .qml styles, then fixes layer paths.
-version=1.1.2
+version=1.2.0
 author=Frederick Cuario
 email=rrcuario@gmail.com
 about=A tool to package layers for sharing by eliminating broken paths.
@@ -15,7 +15,8 @@ experimental=False
 tags=geopackage,share,package,zip,export
 has_processing_provider=False
 license=GNU General Public License v2 or later
-changelog=1.1.2 - Security and code quality update: Added ZIP Slip path traversal protection, hardened XML parsing with defusedxml warning fallback, narrowed broad exception handlers to specific types, logged previously silenced cleanup errors, replaced manual temp directory handling with TemporaryDirectory context manager, and removed unused imports.
+changelog=1.2.0 - Major feature update: Replaced standard text logs with a structured Enterprise-Grade PDF Audit Report. Added ability to separate vector layers into multiple distinct GeoPackages based on QGIS Layer tree groups.
+    1.1.2 - Security and code quality update: Added ZIP Slip path traversal protection, hardened XML parsing with defusedxml warning fallback, narrowed broad exception handlers to specific types, logged previously silenced cleanup errors, replaced manual temp directory handling with TemporaryDirectory context manager, and removed unused imports.
     1.1.1 - Major stability update: Added .qml style file packaging, fixed map layout background/image path mapping, robust destination drive temp staging, and added dynamic zip packaging reports.
     1.1.0 - Experimental release
     1.0.2 - Support for raster sidecar files, localized SVG/Print Layout media packaging, inner QGZ matched naming, and graceful error handling

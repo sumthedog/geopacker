@@ -24,10 +24,11 @@ Sharing QGIS projects often results in broken file paths because standard tools 
 | **Duplicate Checking** | ❌ Blindly processes duplicates, inflating file size. | ✅ Actively detects and **strips duplicate** layer sources. |
 | **Empty Layers** | ❌ Packages empty workspace/scratch layers. | ✅ Automatically **trims out empty** memory layers. |
 | **Remote Layers** | ❌ Attempts to download massive WFS datasets. | ✅ Safely **skips remote vectors**, keeping them linked online. |
-| **Final Output** | ❌ Yields a loose, unmanaged GeoPackage file. | ✅ Generates a **single, safe, email-ready `.zip`** archive containing a detailed `packaging_report.txt`. |
+| **Final Output** | ❌ Yields a loose, unmanaged GeoPackage file. | ✅ Generates a **single, safe, email-ready `.zip`** archive containing a detailed Enterprise-Grade Audit Report (`packaging_report.pdf`). |
 
 ## Features
 - **Consolidates Vectors**: Exports all valid shapefiles, GeoJSONs, etc. into a single `packaged_data.gpkg`.
+- **Grouped GeoPackages**: Optionally splits vector layers into multiple distinct `.gpkg` databases based on their QGIS Layer Tree Group mapping (e.g. `Water-System.gpkg`).
 - **Collects Rasters & Sidecars**: Automatically bundles local rasters alongside any matching sidecar files (like `.tfw` or `.prj`) into a unified `rasters/` directory using GDAL associations.
 - **Packages Layouts & SVGs**: Scans QGIS Projects for local custom SVGs, Print Layout images, and layout backgrounds, copying them to a `media/` folder and rewriting their paths to be relative.
 - **Preserves Layer Styles**: Detects and bundles loose `.qml` style files alongside vector datasets so your map categorization and layout colors never break.
@@ -59,6 +60,10 @@ Sharing QGIS projects often results in broken file paths because standard tools 
 - **Recommended:** [`defusedxml`](https://pypi.org/project/defusedxml/) for hardened XML parsing. Install via `pip install defusedxml` in the QGIS Python console.
 
 ## Changelog
+
+### 1.2.0
+- Added structured Enterprise-Grade Audit Report (PDF Output) replacing old text logs
+- Added option to separate vector layers into multiple distinct GeoPackages based on QGIS Layer tree groups
 
 ### 1.1.2
 - Added ZIP Slip (path traversal) protection during archive extraction

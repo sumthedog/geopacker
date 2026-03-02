@@ -3,6 +3,8 @@ import os
 import tempfile
 import shutil
 import zipfile
+import datetime
+import math
 from qgis.core import (
     QgsProject,
     QgsVectorLayer,
@@ -12,13 +14,16 @@ from qgis.core import (
     Qgis
 )
 from qgis.PyQt.QtCore import QCoreApplication
+from qgis.PyQt.QtGui import QTextDocument
+from qgis.PyQt.QtPrintSupport import QPrinter
 
 class GeopackerLogic:
-    def __init__(self, output_file, strip_duplicates=True, strip_empty=True, skip_remote=True, progress_bar=None, status_label=None):
+    def __init__(self, output_file, strip_duplicates=True, strip_empty=True, skip_remote=True, group_gpkgs=False, progress_bar=None, status_label=None):
         self.output_file = output_file
         self.strip_duplicates = strip_duplicates
         self.strip_empty = strip_empty
         self.skip_remote = skip_remote
+        self.group_gpkgs = group_gpkgs
         self.progress_bar = progress_bar
         self.status_label = status_label
         self.project = QgsProject.instance()
@@ -40,6 +45,21 @@ class GeopackerLogic:
                 if layer.featureCount() <= 0:
                     return True
         return False
+
+    def _get_layer_group_path(self, layer, separator="-"):
+        group_path = ""
+        node = self.project.layerTreeRoot().findLayer(layer.id())
+        if node:
+            parent = node.parent()
+            groups = []
+            while parent and parent != self.project.layerTreeRoot():
+                gname = "".join([c if c.isalnum() or c in (' ', '-', '_') else "_" for c in parent.name()]).strip()
+                if gname:
+                    groups.insert(0, gname)
+                parent = parent.parent()
+            if groups:
+                group_path = separator.join(groups)
+        return group_path
 
     def run(self):
         self.update_status("Starting packaging...", 0)
@@ -69,14 +89,17 @@ class GeopackerLogic:
             seen_sources = set()
             layers_to_package = []
             layers_to_remove = []
-            report_lines = ["Geopacker Packaging Report", "========================="]
+            
+            skipped_layers_data = []
+            success_layers_data = []
+            failed_ops_data = []
 
             self.update_status("Filtering layers...", 5)
             for layer in layers:
                 if self.strip_empty and self.is_layer_empty_temp(layer):
                     self.update_status(f"Skipping empty temporary layer: {layer.name()}")
                     layers_to_remove.append(layer.id())
-                    report_lines.append(f"[SKIPPED] {layer.name()} - Empty temporary layer")
+                    skipped_layers_data.append({'name': layer.name(), 'reason': 'Empty temporary layer'})
                     continue
 
                 source = layer.publicSource()
@@ -84,7 +107,7 @@ class GeopackerLogic:
                     if source in seen_sources:
                         self.update_status(f"Skipping duplicate layer: {layer.name()}")
                         layers_to_remove.append(layer.id())
-                        report_lines.append(f"[SKIPPED] {layer.name()} - Duplicate source")
+                        skipped_layers_data.append({'name': layer.name(), 'reason': 'Duplicate source'})
                         continue
                     seen_sources.add(source)
 
@@ -103,7 +126,7 @@ class GeopackerLogic:
                     if self.skip_remote and provider_name not in ('ogr', 'memory', 'delimitedtext', 'gpx', 'spatialite'):
                         self.update_status(f"Skipping remote vector layer: {layer.name()} ({provider_name})")
                         failed_layers.append(f"• {layer.name()} (Skipped: remote/online provider '{provider_name}')")
-                        report_lines.append(f"[SKIPPED] {layer.name()} - Remote vector ({provider_name})")
+                        skipped_layers_data.append({'name': layer.name(), 'reason': f"Remote vector ({provider_name})"})
                         continue
 
                     options = QgsVectorFileWriter.SaveVectorOptions()
@@ -124,25 +147,34 @@ class GeopackerLogic:
                     used_layer_names.add(safe_name)
                     options.layerName = safe_name
                     
+                    target_gpkg = gpkg_path
+                    gpkg_filename = "packaged_data.gpkg"
+                    if self.group_gpkgs:
+                        group_path = self._get_layer_group_path(layer, separator="-")
+                        
+                        if group_path:
+                            gpkg_filename = f"{group_path}.gpkg"
+                            target_gpkg = os.path.join(temp_dir, gpkg_filename)
+                    
                     options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteFile
                     
-                    if os.path.exists(gpkg_path):
+                    if os.path.exists(target_gpkg):
                         options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
                     
                     write_result = QgsVectorFileWriter.writeAsVectorFormatV3(
-                        layer, gpkg_path, self.project.transformContext(), options)
+                        layer, target_gpkg, self.project.transformContext(), options)
                         
                     writer_err = write_result[0]
                     error_msg = write_result[1] if len(write_result) > 1 else str(writer_err)
                         
                     if writer_err == QgsVectorFileWriter.NoError:
-                        new_source = f"./packaged_data.gpkg|layername={options.layerName}"
+                        new_source = f"./{gpkg_filename}|layername={options.layerName}"
                         layer_mapping[layer.id()] = {
                             'type': 'vector',
                             'source': new_source,
                             'provider': 'ogr'
                         }
-                        report_lines.append(f"[SUCCESS] {layer.name()} -> GeoPackage ({options.layerName})")
+                        success_layers_data.append({'name': layer.name(), 'type': 'Vector', 'dest': f"{gpkg_filename} ({options.layerName})"})
                         
                         # Pack loose .qml style files for vectors
                         source_path = layer.dataProvider().dataSourceUri()
@@ -158,13 +190,12 @@ class GeopackerLogic:
                                 dst_qml = os.path.join(styles_dir, f"{options.layerName}.qml")
                                 try:
                                     shutil.copy2(qml_path, dst_qml)
-                                    report_lines.append(f"[SUCCESS] {layer.name()} -> Copied Style (.qml)")
                                 except OSError as e:
-                                    report_lines.append(f"[FAILED] {layer.name()} - Could not copy .qml: {e}")
+                                    failed_ops_data.append({'name': f"{layer.name()} (.qml)", 'reason': str(e)})
                     else:
                         QgsMessageLog.logMessage(f"Failed to export {layer.name()}: {error_msg}", "Geopacker", Qgis.Warning)
                         failed_layers.append(f"• {layer.name()} (Failed export: {error_msg})")
-                        report_lines.append(f"[FAILED] {layer.name()} - {error_msg}")
+                        failed_ops_data.append({'name': layer.name(), 'reason': f"Export failed: {error_msg}"})
                 
                 elif layer.type() == QgsRasterLayer.RasterLayer:
                     source_path = layer.dataProvider().dataSourceUri()
@@ -173,18 +204,7 @@ class GeopackerLogic:
                         source_dir = os.path.dirname(source_path)
                         base_name, _ = os.path.splitext(filename)
                         
-                        group_path = ""
-                        node = self.project.layerTreeRoot().findLayer(layer.id())
-                        if node:
-                            parent = node.parent()
-                            groups = []
-                            while parent and parent != self.project.layerTreeRoot():
-                                gname = "".join([c if c.isalnum() or c in (' ', '-', '_') else "_" for c in parent.name()]).strip()
-                                if gname:
-                                    groups.insert(0, gname)
-                                parent = parent.parent()
-                            if groups:
-                                group_path = "/".join(groups)
+                        group_path = self._get_layer_group_path(layer, separator="/")
 
                         raster_dest_dir = os.path.join(rasters_dir, os.path.normpath(group_path)) if group_path else rasters_dir
                         os.makedirs(raster_dest_dir, exist_ok=True)
@@ -204,6 +224,8 @@ class GeopackerLogic:
                                                     shutil.copy2(src_f, dst_f)
                                                 except shutil.SameFileError:
                                                     pass
+                                                except OSError as e:
+                                                    QgsMessageLog.logMessage(f"Failed to copy raster file {src_f}: {str(e)}", "Geopacker", Qgis.Warning)
                                 else:
                                     raise Exception("gdal.Open failed")
                             except (ImportError, OSError, RuntimeError):
@@ -217,8 +239,10 @@ class GeopackerLogic:
                                             dst_f = os.path.join(raster_dest_dir, f)
                                             try:
                                                 shutil.copy2(src_f, dst_f)
-                                            except (OSError, shutil.SameFileError):
+                                            except shutil.SameFileError:
                                                 pass
+                                            except OSError as e:
+                                                QgsMessageLog.logMessage(f"Failed to copy raster file {src_f}: {str(e)}", "Geopacker", Qgis.Warning)
                                         
                         new_source = f"./rasters/{group_path}/{filename}" if group_path else f"./rasters/{filename}"
                         layer_mapping[layer.id()] = {
@@ -226,10 +250,10 @@ class GeopackerLogic:
                             'source': new_source,
                             'provider': 'gdal'
                         }
-                        report_lines.append(f"[SUCCESS] {layer.name()} -> Copied Raster")
+                        success_layers_data.append({'name': layer.name(), 'type': 'Raster', 'dest': 'Copied Local Raster'})
                     else:
                         QgsMessageLog.logMessage(f"Skipping raster copy for {layer.name()} (not a local file)", "Geopacker", Qgis.Info)
-                        report_lines.append(f"[SKIPPED] {layer.name()} - Remote/Non-local Raster")
+                        skipped_layers_data.append({'name': layer.name(), 'reason': 'Remote/Non-local Raster'})
 
             self.update_status("Saving project copy...", 70)
             
@@ -276,6 +300,12 @@ class GeopackerLogic:
                 def process_media_path(path_str):
                     if not path_str or not isinstance(path_str, str):
                         return path_str
+                        
+                    # Prevent vector files from being accidentally swept up as media through generic 'source' tags
+                    lower_path = path_str.lower()
+                    if lower_path.endswith('.shp') or lower_path.endswith('.shx') or lower_path.endswith('.dbf') or lower_path.endswith('.geojson'):
+                        return path_str
+                        
                     if os.path.isabs(path_str) and os.path.isfile(path_str):
                         if path_str not in media_mapping:
                             filename = os.path.basename(path_str)
@@ -312,7 +342,8 @@ class GeopackerLogic:
                         try:
                             shutil.copy2(path_str, dest_path)
                             return f"./styles/{safe_name}"
-                        except OSError:
+                        except OSError as e:
+                            QgsMessageLog.logMessage(f"Failed to copy style file {path_str}: {str(e)}", "Geopacker", Qgis.Warning)
                             return path_str
                     return path_str
 
@@ -429,9 +460,136 @@ class GeopackerLogic:
                 shutil.move(new_qgz_path, temp_qgz_path)
                 shutil.rmtree(qgz_extract_dir, ignore_errors=True)
 
-            report_path = os.path.join(temp_dir, "packaging_report.txt")
-            with open(report_path, "w", encoding="utf-8") as rf:
-                rf.write("\n".join(report_lines) + "\n")
+            self.update_status("Generating PDF Audit Report...", 82)
+            
+            # --- Gather PDF Report Data ---
+            def get_dir_size(path):
+                total = 0
+                if os.path.exists(path):
+                    if os.path.isfile(path):
+                        return os.path.getsize(path)
+                    for dirpath, _, filenames in os.walk(path):
+                        for f in filenames:
+                            fp = os.path.join(dirpath, f)
+                            if not os.path.islink(fp):
+                                total += os.path.getsize(fp)
+                return total
+
+            def format_sz(size_bytes):
+                if size_bytes == 0:
+                    return "0 B"
+                size_name = ("B", "KB", "MB", "GB", "TB")
+                i = int(math.floor(math.log(size_bytes, 1024)))
+                p = math.pow(1024, i)
+                s = round(size_bytes / p, 2)
+                return f"{s} {size_name[i]}"
+
+            proj_title = self.project.metadata().title() or "Untitled Project"
+            proj_author = self.project.metadata().author() or "N/A"
+            proj_crs = self.project.crs().authid()
+            proj_crs_desc = self.project.crs().description()
+            
+            gpkg_total_size = 0
+            for file in os.listdir(temp_dir):
+                if file.endswith('.gpkg'):
+                    gpkg_total_size += os.path.getsize(os.path.join(temp_dir, file))
+            
+            sizes = {
+                'GeoPackage(s) (Vectors)': gpkg_total_size,
+                'Rasters': get_dir_size(rasters_dir),
+                'Media Assets': get_dir_size(media_dir),
+                'Styles': get_dir_size(styles_dir),
+                'Project File (.qgz)': get_dir_size(temp_qgz_path)
+            }
+            total_sz = sum(sizes.values())
+            
+            # Build HTML
+            html = f"""
+            <html>
+            <head>
+                <style>
+                    body {{ font-family: 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #333; line-height: 1.4; }}
+                    h1 {{ color: #2C3E50; font-size: 16pt; border-bottom: 1pt solid #3498DB; padding-bottom: 6pt; margin-bottom: 15pt; }}
+                    h2 {{ color: #2980B9; font-size: 13pt; margin-top: 25pt; border-bottom: 1pt solid #ddd; padding-bottom: 4pt; margin-bottom: 10pt; }}
+                    table {{ width: 100%; border-collapse: collapse; margin-top: 15pt; font-size: 10pt; }}
+                    th, td {{ padding: 12pt; text-align: left; border: 1pt solid #e0e0e0; }}
+                    th {{ background-color: #F8FAFC; color: #2C3E50; font-weight: bold; padding-top: 14pt; padding-bottom: 14pt; }}
+                    td {{ padding-top: 10pt; padding-bottom: 10pt; }}
+                    .success {{ color: #27AE60; font-weight: bold; }}
+                    .skipped {{ color: #F39C12; font-weight: bold; }}
+                    .failed {{ color: #C0392B; font-weight: bold; }}
+                    .right {{ text-align: right; }}
+                </style>
+            </head>
+            <body>
+                <h1>Geopacker Enterprise Audit Report</h1>
+                
+                <h2>Project Summary</h2>
+                <table>
+                    <tr><th>Project File</th><td>{os.path.basename(self.project.fileName())}</td></tr>
+                    <tr><th>Project Title</th><td>{proj_title}</td></tr>
+                    <tr><th>Author</th><td>{proj_author}</td></tr>
+                    <tr><th>Timestamp</th><td>{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</td></tr>
+                </table>
+                
+                <h2>CRS Details</h2>
+                <table>
+                    <tr><th>Authority ID</th><td>{proj_crs}</td></tr>
+                    <tr><th>Description</th><td>{proj_crs_desc}</td></tr>
+                </table>
+                
+                <h2>Data Size Breakdown</h2>
+                <table>
+                    <tr><th>Component</th><th class="right">Size</th></tr>
+            """
+            for comp, sz in sizes.items():
+                if sz > 0:
+                    html += f"<tr><td>{comp}</td><td class='right'>{format_sz(sz)}</td></tr>"
+            html += f"<tr><th>Total Packaged Size</th><th class='right'>{format_sz(total_sz)}</th></tr>"
+            html += "</table>"
+
+            html += "<h2>Layer Inventory</h2>"
+            if success_layers_data:
+                html += """<table>
+                    <tr><th>Layer Name</th><th>Type</th><th>Destination</th></tr>"""
+                for lyr in success_layers_data:
+                    html += f"<tr><td>{lyr['name']}</td><td>{lyr['type']}</td><td><span class='success'>✓ {lyr['dest']}</span></td></tr>"
+                html += "</table>"
+            else:
+                html += "<p>No layers packaged.</p>"
+
+            if skipped_layers_data:
+                html += "<h2>Skipped Items</h2>"
+                html += """<table>
+                    <tr><th>Layer Name</th><th>Reason for Skipping</th></tr>"""
+                for lyr in skipped_layers_data:
+                    html += f"<tr><td>{lyr['name']}</td><td><span class='skipped'>{lyr['reason']}</span></td></tr>"
+                html += "</table>"
+
+            if failed_ops_data:
+                html += "<h2>Failed Operations</h2>"
+                html += """<table>
+                    <tr><th>Item Name</th><th>Reason for Failure</th></tr>"""
+                for r in failed_ops_data:
+                    html += f"<tr><td>{r['name']}</td><td><span class='failed'>{r['reason']}</span></td></tr>"
+                html += "</table>"
+            
+            html += "</body></html>"
+            
+            report_path = os.path.join(temp_dir, "packaging_report.pdf")
+            try:
+                doc = QTextDocument()
+                doc.setHtml(html)
+                printer = QPrinter(QPrinter.HighResolution)
+                printer.setOutputFormat(QPrinter.PdfFormat)
+                printer.setOutputFileName(report_path)
+                doc.print_(printer)
+            except Exception as e:
+                QgsMessageLog.logMessage(f"Failed to generate PDF report: {e}", "Geopacker", Qgis.Warning)
+                # Fallback to HTML if PDF generation fails
+                report_path = os.path.join(temp_dir, "packaging_report.html")
+                with open(report_path, "w", encoding="utf-8") as rf:
+                    rf.write(html)
 
             self.update_status("Zipping final package...", 85)
             
@@ -442,11 +600,14 @@ class GeopackerLogic:
             with zipfile.ZipFile(self.output_file, 'w', zipfile.ZIP_DEFLATED) as final_zip:
                 final_zip.write(temp_qgz_path, qgz_name_in_zip)
                 
-                if os.path.exists(gpkg_path):
-                    final_zip.write(gpkg_path, "packaged_data.gpkg")
+                for file in os.listdir(temp_dir):
+                    if file.endswith('.gpkg'):
+                        final_zip.write(os.path.join(temp_dir, file), file)
                 
-                if os.path.exists(report_path):
-                    final_zip.write(report_path, "packaging_report.txt")
+                if os.path.exists(os.path.join(temp_dir, "packaging_report.pdf")):
+                    final_zip.write(os.path.join(temp_dir, "packaging_report.pdf"), "packaging_report.pdf")
+                elif os.path.exists(os.path.join(temp_dir, "packaging_report.html")):
+                    final_zip.write(os.path.join(temp_dir, "packaging_report.html"), "packaging_report.html")
                 
                 for root_dir, dirs, files in os.walk(rasters_dir):
                     for file in files:

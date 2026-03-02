@@ -23,6 +23,7 @@ class GeopackerDialog(QDialog, FORM_CLASS):
         strip_dupes = self.chkStripDuplicates.isChecked()
         strip_empty = self.chkStripEmpty.isChecked()
         skip_remote = self.chkSkipRemoteVectors.isChecked()
+        group_gpkgs = self.chkGroupGpkgs.isChecked()
         
         if not output_file:
             from qgis.PyQt.QtWidgets import QMessageBox
@@ -34,6 +35,7 @@ class GeopackerDialog(QDialog, FORM_CLASS):
             strip_duplicates=strip_dupes, 
             strip_empty=strip_empty,
             skip_remote=skip_remote,
+            group_gpkgs=group_gpkgs,
             progress_bar=self.progressBar,
             status_label=self.lblStatus
         )
