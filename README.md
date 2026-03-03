@@ -4,7 +4,7 @@
 
 # Geopacker QGIS Plugin
 
-![Version](https://img.shields.io/badge/version-1.1.2-blue)
+![Version](https://img.shields.io/badge/version-1.1.3-blue)
 
 **Geopacker** is a QGIS plugin designed to solve the headache of broken paths when sharing QGIS projects. It bundles your entire current project (`.qgz`), vector layers, and raster layers into a single, clean `.zip` file ready to be shared. 
 
@@ -31,6 +31,7 @@ Sharing QGIS projects often results in broken file paths because standard tools 
 - **Grouped GeoPackages**: Optionally splits vector layers into multiple distinct `.gpkg` databases based on their QGIS Layer Tree Group mapping (e.g. `Water-System.gpkg`).
 - **Collects Rasters & Sidecars**: Automatically bundles local rasters alongside any matching sidecar files (like `.tfw` or `.prj`) into a unified `rasters/` directory using GDAL associations.
 - **Packages Layouts & SVGs**: Scans QGIS Projects for local custom SVGs, Print Layout images, and layout backgrounds, copying them to a `media/` folder and rewriting their paths to be relative.
+- **Embedded Vector Styles**: Automatically detects and directly embeds vector layer styles (`.qml`) into the generated GeoPackage SQLite database, ensuring symbology immediately persists when users load the gpkg into a brand new QGIS project.
 - **Preserves Layer Styles**: Detects and bundles loose `.qml` style files alongside vector datasets so your map categorization and layout colors never break.
 - **Smart Path Remapping**: Behind the scenes, the plugin unzips a copy of your `.qgz` project, parses the underlying XML, and updates all layer and media data sources to point to the new relatively-pathed items.
 - **Dynamic ZIP Naming**: The QGIS project file securely nested inside the ZIP archive takes on the same matching name as your exported zip file (e.g., `MyProject.zip` will contain `MyProject.qgz`).
@@ -60,6 +61,9 @@ Sharing QGIS projects often results in broken file paths because standard tools 
 - **Recommended:** [`defusedxml`](https://pypi.org/project/defusedxml/) for hardened XML parsing. Install via `pip install defusedxml` in the QGIS Python console.
 
 ## Changelog
+
+### 1.1.3
+- Embedded Vector Styles: Automatically saves and embeds vector layer styles directly into the output GeoPackage database so symbology persists when loaded into new projects.
 
 ### 1.2.0
 - Added structured Enterprise-Grade Audit Report (PDF Output) replacing old text logs
