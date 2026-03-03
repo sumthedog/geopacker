@@ -176,6 +176,27 @@ class GeopackerLogic:
                         }
                         success_layers_data.append({'name': layer.name(), 'type': 'Vector', 'dest': f"{gpkg_filename} ({options.layerName})"})
                         
+                        # --- Embed Style to GeoPackage ---
+                        try:
+                            temp_style_file = os.path.join(temp_dir, f"temp_{options.layerName}.qml")
+                            # Save style to temp file
+                            layer.saveNamedStyle(temp_style_file)
+                            
+                            # Open Geopackage layer to save style internally
+                            gpkg_layer_uri = f"{target_gpkg}|layername={options.layerName}"
+                            gpkg_layer = QgsVectorLayer(gpkg_layer_uri, options.layerName, "ogr")
+                            
+                            if gpkg_layer.isValid():
+                                gpkg_layer.loadNamedStyle(temp_style_file)
+                                gpkg_layer.saveStyleToDatabase(options.layerName, "", True, "")
+                                
+                            del gpkg_layer
+                            if os.path.exists(temp_style_file):
+                                os.remove(temp_style_file)
+                        except Exception as e:
+                            QgsMessageLog.logMessage(f"Failed to save style to GeoPackage for {layer.name()}: {str(e)}", "Geopacker", Qgis.Warning)
+                        # ---------------------------------
+                        
                         # Pack loose .qml style files for vectors
                         source_path = layer.dataProvider().dataSourceUri()
                         if source_path and '|' in source_path:

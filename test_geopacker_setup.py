@@ -5,7 +5,7 @@ import os
 import tempfile
 from qgis.core import (
     QgsProject, QgsVectorLayer, QgsRasterLayer, QgsFeature, QgsGeometry,
-    QgsPointXY, QgsField
+    QgsPointXY, QgsField, QgsSingleSymbolRenderer, QgsMarkerSymbol
 )
 from PyQt5.QtCore import QVariant
 
@@ -63,6 +63,24 @@ def setup_test_project():
     except Exception as e:
         print(f"Skipping dummy raster creation: {e}")
             
+    # 6. Styled Vector Layer
+    vl_styled = QgsVectorLayer("Point?crs=epsg:4326", "6_Styled_Points", "memory")
+    pr_styled = vl_styled.dataProvider()
+    pr_styled.addAttributes([QgsField("id", QVariant.Int)])
+    vl_styled.updateFields()
+    feat_styled = QgsFeature()
+    feat_styled.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(121, 16)))
+    feat_styled.setAttributes([1])
+    pr_styled.addFeatures([feat_styled])
+    vl_styled.updateExtents()
+    
+    # Add some custom styling
+    symbol = QgsMarkerSymbol.createSimple({'name': 'star', 'color': '255,0,0', 'size': '5'})
+    renderer = QgsSingleSymbolRenderer(symbol)
+    vl_styled.setRenderer(renderer)
+    
+    project.addMapLayer(vl_styled)
+    
     # Save project to a temp file so it has a known state
     project_path = os.path.join(temp_dir, "geopacker_test_project.qgz")
     project.write(project_path)
@@ -75,6 +93,8 @@ def setup_test_project():
     print("  3. 3_Duplicate_Points         -> Should be skipped (if 'Strip Duplicates' is True)")
     print("  4. 4_Remote_Earthquakes       -> Should be skipped (if 'Skip Remote' is True) but stay linked")
     print("  5. 5_Local_Raster             -> Should be copied to rasters/ directory")
+    print("  6. 6_Styled_Points            -> Should be packaged to GPKG with embedded style")
     print("\nYou can now open the Geopacker plugin, select an output zip location, and click Run!")
+
 
 setup_test_project()
