@@ -62,10 +62,10 @@ Sharing QGIS projects often results in broken file paths because standard tools 
 
 ## Changelog
 
-### 1.1.3
+### 1.1.4
 - Embedded Vector Styles: Automatically saves and embeds vector layer styles directly into the output GeoPackage database so symbology persists when loaded into new projects.
 
-### 1.2.0
+### 1.1.3
 - Added structured Enterprise-Grade Audit Report (PDF Output) replacing old text logs
 - Added option to separate vector layers into multiple distinct GeoPackages based on QGIS Layer tree groups
 
